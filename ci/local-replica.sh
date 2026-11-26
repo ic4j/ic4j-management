@@ -19,10 +19,10 @@ JSON
 printf 'service : { greet : (text) -> (text) }\n' > fixture.did
 cp "$GITHUB_WORKSPACE/module/src/test/resources/hello.wasm" fixture.wasm
 sha256sum fixture.wasm > "$reports/fixture-inputs.sha256"
-trap 'cd "$fixture"; dfx stop >> "$reports/dfx.log" 2>&1 || true' EXIT
+trap 'cd "$fixture"; dfx stop >> "$reports/dfx.log" 2>&1 || true; rm -rf "$DFX_CONFIG_ROOT"' EXIT
 dfx start --clean --host 127.0.0.1:4943 --background > "$reports/dfx.log" 2>&1
 curl --fail --silent --show-error --retry 20 --retry-delay 1 --retry-connrefused --max-time 3 http://127.0.0.1:4943/api/v2/status > /dev/null
-dfx canister create fixture --network local --identity anonymous --no-wallet 2>&1 | tee "$reports/fixture-deploy.log"
+dfx canister create fixture --network local --identity anonymous --no-wallet 2>&1 | sed "/^Your seed phrase:/d" | tee "$reports/fixture-deploy.log"
 export IC4J_CI_FIXTURE
 IC4J_CI_FIXTURE="$(dfx canister id fixture --network local)"
 [[ "$IC4J_CI_FIXTURE" =~ ^[a-z0-9]+(-[a-z0-9]+)+$ ]]
