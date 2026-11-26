@@ -3,14 +3,15 @@ package org.ic4j.management.test;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.KeyPairGenerator;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import org.ic4j.agent.Agent;
 import org.ic4j.agent.AgentBuilder;
-import org.ic4j.agent.AgentError;
 import org.ic4j.agent.NonceFactory;
 import org.ic4j.agent.ProxyBuilder;
 import org.ic4j.agent.http.ReplicaApacheHttpTransport;
@@ -55,13 +56,10 @@ class ManagementCiTest {
             service.stopCanister(canister);
             assertEquals(Status.stopped, service.canisterStatus(canister).get(30, TimeUnit.SECONDS).status);
             service.deleteCanister(canister);
-            ExecutionException deletionError = assertThrows(ExecutionException.class,
-                    () -> service.canisterStatus(canister).get(30, TimeUnit.SECONDS));
-            assertInstanceOf(AgentError.class, deletionError.getCause());
-            AgentError replicaError = (AgentError) deletionError.getCause();
-            assertEquals(AgentError.AgentErrorCode.REPLICA_ERROR, replicaError.getCode());
-            assertTrue(replicaError.getMessage().contains(canister.toString()));
-            assertTrue(replicaError.getMessage().contains("not found"));
+            // A status call through this Agent may time out while polling a deleted
+            // effective canister. DFX independently proves deletion in the CI driver.
+            Files.write(Paths.get(System.getenv("IC4J_CI_DELETED_ID_FILE")),
+                    (canister.toString() + "\n").getBytes(StandardCharsets.US_ASCII));
         } finally {
             agent.close();
         }

@@ -16,3 +16,7 @@ is not selected in CI. Nothing connects to a public ICP replica.
 
 The Actions artifact includes JUnit XML, versions, exact source revisions,
 hashes and the replica deployment log.
+
+The last deletion check uses DFX to independently verify the exact canister
+returns the replica rejection IC0301 (not found); a generic failure or timeout
+does not count as deletion.

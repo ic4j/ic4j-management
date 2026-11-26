@@ -39,7 +39,19 @@ g agent clean publishToMavenLocal
     sha256sum org/ic4j/ic4j-{agent,candid}/0.8.5/ic4j-*-0.8.5.jar
 ) | tee "$reports/dependencies.sha256"
 source "$GITHUB_WORKSPACE/module/ci/local-replica.sh"
+export IC4J_CI_DELETED_ID_FILE="$reports/deleted-canister.txt"
 g module clean jar test
+
+deleted="$(cat "$IC4J_CI_DELETED_ID_FILE")"
+[[ "$deleted" =~ ^[a-z0-9]+(-[a-z0-9]+)+$ && "$deleted" != "$IC4J_CI_FIXTURE" ]]
+rc=0
+(cd "$fixture"; timeout 45s dfx canister status "$deleted" --network local --identity anonymous) \
+    > "$reports/deleted-status.log" 2>&1 || rc=$?
+if [[ "$rc" == 0 || "$rc" == 124 || "$rc" == 137 ]]; then
+    echo "DFX did not report a definitive replica rejection (exit $rc)"; exit 1
+fi
+grep -Fq "Canister $deleted not found" "$reports/deleted-status.log"
+grep -Fq 'IC0301' "$reports/deleted-status.log"
 
 (cd "$repo"; sha256sum -c "$reports/dependencies.sha256")
 jar="module/build/libs/ic4j-management-0.8.5.jar"
