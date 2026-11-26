@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.ic4j.agent.Agent;
 import org.ic4j.agent.AgentBuilder;
+import org.ic4j.agent.AgentError;
 import org.ic4j.agent.NonceFactory;
 import org.ic4j.agent.ProxyBuilder;
 import org.ic4j.agent.http.ReplicaApacheHttpTransport;
@@ -54,7 +55,13 @@ class ManagementCiTest {
             service.stopCanister(canister);
             assertEquals(Status.stopped, service.canisterStatus(canister).get(30, TimeUnit.SECONDS).status);
             service.deleteCanister(canister);
-            assertThrows(ExecutionException.class, () -> service.canisterStatus(canister).get(30, TimeUnit.SECONDS));
+            ExecutionException deletionError = assertThrows(ExecutionException.class,
+                    () -> service.canisterStatus(canister).get(30, TimeUnit.SECONDS));
+            assertInstanceOf(AgentError.class, deletionError.getCause());
+            AgentError replicaError = (AgentError) deletionError.getCause();
+            assertEquals(AgentError.AgentErrorCode.REPLICA_ERROR, replicaError.getCode());
+            assertTrue(replicaError.getMessage().contains(canister.toString()));
+            assertTrue(replicaError.getMessage().contains("not found"));
         } finally {
             agent.close();
         }
